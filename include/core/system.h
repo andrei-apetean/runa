@@ -3,7 +3,9 @@
 
 #include <stdint.h>
 
-uint64_t timestamp(void);
-void ssleep(uint64_t us);
+#include "core.h"
 
+int system_connect(struct syscon* connection);
+void system_read_events(struct syscon* connection);
+void system_disconnect(struct syscon* connection);
 #endif /* SYSTEM_H */

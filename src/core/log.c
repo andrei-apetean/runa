@@ -3,12 +3,8 @@
 
 #include "log.h"
 
-FILE* log_file;
-
-void print(enum severity severity, const char* fmt, ...)
-{
-    // TODO: API to open log_file;
-    log_file = stdout;
+void print(enum severity severity, const char* fmt, ...) {
+    // todo: api to open log_file;
     const char* prefixes[] = {
         "[crt] ",
         "[err] ",
@@ -18,9 +14,9 @@ void print(enum severity severity, const char* fmt, ...)
     };
     va_list args;
     va_start(args, fmt);
-    fprintf(log_file, "%s", prefixes[severity]);
-    fprintf(log_file, fmt, args);
-    fflush(log_file);
+    fprintf(stdout, "%s", prefixes[severity]);
+    vfprintf(stdout, fmt, args);
+    fflush(stdout);
     va_end(args);
 }
 

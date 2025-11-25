@@ -8,6 +8,10 @@
 
 #define count_of(arr) (sizeof(arr)/(sizeof(arr[0])))
 
+struct syscon {
+    int* id;
+};
+
 int init();
 int loop();
 
