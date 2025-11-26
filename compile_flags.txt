@@ -1,6 +1,8 @@
 -I./external
 -I./include/core
+-I./include/vulkan
 -I/home/aa/code/vulkan_sdk/x86_64/include
 -Wall
 -Wextra
 -Werror
+-D_DEBUG

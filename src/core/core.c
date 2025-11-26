@@ -1,5 +1,6 @@
 #include "core.h"
 #include "log.h"
+#include "rvulkan.h"
 #include "system.h"
 #include "time.h"
 
@@ -8,6 +9,7 @@ uint64_t last = 0;
 uint64_t elapsed = 0;
 uint64_t start = 0;
 struct syscon syscon;
+struct rvulkan vk;
 
 int init()
 {
@@ -18,10 +20,16 @@ int init()
         logerr("Failed to connect to the system!\n");
         return err;
     }
+
+    err = init_vulkan(&syscon, &vk);
+    if (err) {
+        logerr("Failed to initialize vulkan!\n");
+        return err;
+    }
+
     loginf("Initialzation successful!\n");
     return err;
 }
-
 
 int loop()
 {
