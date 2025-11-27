@@ -13,6 +13,6 @@ struct syscon {
 };
 
 int init();
-int loop();
+void loop();
 
 #endif /* CORE_H */

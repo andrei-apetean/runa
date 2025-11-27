@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 #include <wayland-client.h>
-#include "wl/xdg-shell.h"
+#include <wl/xdg-shell.h>
 
 #include "core.h"
 #include "log.h"
