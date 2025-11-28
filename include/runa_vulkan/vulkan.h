@@ -3,7 +3,6 @@
 
 #include <vulkan/vulkan.h>
 
-#include "core.h"
 
 struct rvulkan {
     VkInstance instance;
@@ -13,7 +12,7 @@ struct rvulkan {
 #endif /* _DEBUG */
 };
 
-int init_vulkan(struct syscon* connection, struct rvulkan* self);
+int init_vulkan(struct rvulkan* self);
 void terminate_vulkan(struct rvulkan* self);
 
 #endif

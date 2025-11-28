@@ -19,11 +19,11 @@ LAUNCHER_OBJ = launcher.o core.o xdg-shell.o vulkan.o rt.o
 
 launcher: $(LAUNCHER_OBJ)
 	@mkdir -p $(BIN)
-	$(CC) $(OBJ)/launcher.o $(OBJ)/core.o $(OBJ)/xdg-shell.o $(OBJ)/vulkan.o $(OBJ)/rt.o -o $(BIN)/$@ $(CFLAGS)  $(LINK_WL) $(LINK_VK) 
+	$(CC) $(OBJ)/launcher.o $(OBJ)/core.o $(OBJ)/xdg-shell.o $(OBJ)/rt.o -o $(BIN)/$@ $(CFLAGS)  $(LINK_WL)
 	
-launcher.o: $(SRC)/launcher/main.c
+launcher.o: $(SRC)/launcher/launcher_linux.c
 	@mkdir -p $(OBJ)
-	$(CC) -c $< -o $(OBJ)/$@ $(CFLAGS) -I$(ICORE) -Iexternal -I$(IVK)
+	$(CC) -c $< -o $(OBJ)/$@ $(CFLAGS) -I$(ICORE) -Iexternal 
 
 core.o: $(SCORE)/unity.c
 	@mkdir -p $(OBJ)

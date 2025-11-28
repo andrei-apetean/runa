@@ -1,4 +1,5 @@
 #include "vulkan.h"
+#include "core.h"
 #include "log.h"
 #include "system.h"
 
@@ -9,9 +10,8 @@ static int create_debug_messenger(struct rvulkan* self);
 static void destroy_debug_messenger(struct rvulkan* self);
 #endif /* _DEBUG */
 
-int init_vulkan(struct syscon* connection, struct rvulkan* self) 
+int init_vulkan( struct rvulkan* self) 
 {
-    (void)connection;
     int err = 0;
     err = init_instance(self);
     if (err) {
@@ -36,15 +36,15 @@ void terminate_vulkan(struct rvulkan* self)
 static int init_instance(struct rvulkan* self)
 {
     (void)self;
-    const char* surface_extensions[SURFACE_API_COUNT] = {
-        [SURFACE_API_WL] = "VK_KHR_wayland_surface",
+    /* TODO */
+    const char* surface_extensions[1] = {
+        [0] = "VK_KHR_wayland_surface",
     };
-    enum surface_api surface_api = system_surface_api();
 
     const char* extensions[] = {
         VK_KHR_SURFACE_EXTENSION_NAME,
         /* probably should check the return value is less than max */
-        surface_extensions[surface_api],
+        surface_extensions[0], /* TODO */
 #if _DEBUG
         VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
         VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
