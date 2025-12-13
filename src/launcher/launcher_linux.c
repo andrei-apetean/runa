@@ -1,21 +1,29 @@
+#include <dirent.h>
+#include <libgen.h>
+#include <linux/limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <dlfcn.h>
 
 #include <wayland-client.h>
 #include <wl/xdg-shell.h>
 
-#include "core.h"
-#include "log.h"
-#include "system.h"
+#include "runa_core/core.h"
 
 #define ONE_MILLION 1000000
+#define PATH_SZ 1024
 
-int running = 0;
+static char modules_dir[PATH_SZ] = {0};
+static int module_count;
+static int running = 0;
+
 /* TODO: not sure what to do about these */
-int width;
-int height;
+static int width;
+static int height;
+
 static struct rt rt;
 static struct wl_display* display;
 static struct wl_registry* registry;
@@ -26,51 +34,14 @@ static struct wl_surface* surface;
 static struct xdg_surface* xdg_surface;
 static struct xdg_toplevel* toplevel;
 
-uint64_t get_timestamp(void);
-void     system_sleep(uint64_t us);
-
-int main()
-{
-    int err = 0; 
-
-    err = system_connect();
-    if (err) {
-        logerr("Failed to connect to the system!\n");
-        return err;
-    }
-
-    init(NULL);
-
-    rt =(struct rt) {
-        .timestamp = get_timestamp,
-        .sleep = system_sleep,
-        .log = printf,
-        .read_events = system_read_events,
-    };
-
-
-    loginf("Initialzation successful!\n");
-    volatile int i = 0;
-    running = 1;
-    while (running) {
-        loop(&rt);
-        i++;
-        if (i > 10){
-            running = 0;
-        }
-    }
-    terminate();
-    system_disconnect();
-}
-
-uint64_t get_timestamp(void)
+static uint64_t timestamp(void)
 {
     struct timeval val;
     gettimeofday(&val, NULL);
     return (uint64_t)val.tv_usec + ((uint64_t)val.tv_sec * ONE_MILLION);
 }
 
-void system_sleep(uint64_t us) 
+static void idle(uint64_t us) 
 {
     usleep(us);
 }
@@ -142,7 +113,18 @@ static const struct xdg_toplevel_listener toplevel_listener = {
     .close = toplevel_close,
 };
 
-int system_connect()
+static void disconnect()
+{
+    if (toplevel) xdg_toplevel_destroy(toplevel);
+    if (xdg_surface) xdg_surface_destroy(xdg_surface);
+    if (surface) wl_surface_destroy(surface);
+    if (shell) xdg_wm_base_destroy(shell);
+    if (compositor) wl_compositor_destroy(compositor);
+    if (registry) wl_registry_destroy(registry);
+    if (display) wl_display_disconnect(display);
+}
+
+static int connect()
 {
     display = wl_display_connect(0);
     if (!display) goto _err;
@@ -179,11 +161,11 @@ int system_connect()
     return 0;
 
  _err:
-    system_disconnect();
+    disconnect();
     return -1;
 }
 
-int system_read_events(/* TODO pass the events*/)
+static int read_events(/* TODO pass the events*/)
 {
     wl_display_dispatch_pending(display);
     while (wl_display_prepare_read(display)) {
@@ -191,20 +173,104 @@ int system_read_events(/* TODO pass the events*/)
     }
 
     if (wl_display_read_events(display)) {
-        logwrn("Failed to read wayland events");
+        printf("Failed to read wayland events");
     }
     wl_display_dispatch_pending(display);
     wl_display_flush(display);
     return 0;
 }
 
-void system_disconnect()
+static int load_module_info(int* count, struct module** mods)
 {
-    if (toplevel) xdg_toplevel_destroy(toplevel);
-    if (xdg_surface) xdg_surface_destroy(xdg_surface);
-    if (surface) wl_surface_destroy(surface);
-    if (shell) xdg_wm_base_destroy(shell);
-    if (compositor) wl_compositor_destroy(compositor);
-    if (registry) wl_registry_destroy(registry);
-    if (display) wl_display_disconnect(display);
+    DIR* d = opendir(modules_dir);
+    if (!d) return -1;
+
+    *count = -2;
+    struct dirent* entry;
+    while ((entry = readdir(d))) (*count)++;
+
+    rewinddir(d);
+    struct module* modules = malloc(sizeof(*modules) * (*count));
+    if (!modules) return -1;
+
+    printf("Reading modules...\n");
+    int i = 0;
+    while ((entry = readdir(d))) {
+        if (!strcmp(".", entry->d_name) || !strcmp("..", entry->d_name)) continue;
+
+        char mod_path[PATH_SZ] = { 0 };
+        sprintf(mod_path, "%s/%s", modules_dir, entry->d_name);
+
+        void* lib = dlopen(mod_path, RTLD_NOW);
+        if (!lib) continue;
+
+        void(*get_info)(struct runa_itfd*) = dlsym(lib, "get_modinfo");
+        if (!get_info) {
+            dlclose(lib);
+            continue;
+        }
+        struct module* m = &modules[i];
+        *m = (struct module){0};
+        get_info(&m->descriptor);
+        m->handle = (uintptr_t)lib;
+        printf("%s [%s] (%d bytes)\n",
+               m->descriptor.name, entry->d_name, m->descriptor.size_bytes);
+        i++;
+    }
+
+    closedir(d);
+    (*mods) = modules;
+    return 0;
+}
+
+int main()
+{
+    int err = 0; 
+
+    {
+        char self_path[1024] = {0};
+        err = readlink("/proc/self/exe", self_path, sizeof(self_path)-1);
+        if (err < 0) {
+            return err;
+        }
+        err = 0;
+        char* self_dir = dirname(self_path);
+        sprintf(modules_dir, "%s/modules", self_dir);
+    }
+
+    err = connect();
+    if (err) {
+        printf("Failed to connect to the system!\n");
+        return err;
+    }
+
+    rt = (struct rt) {
+        .timestamp = timestamp,
+        .idle = idle,
+        .log = printf,
+        .read_events = read_events,
+        .modcount = module_count,
+    };
+    err = load_module_info(&rt.modcount, &rt.modules);
+
+    err = init(&rt);
+    if (err) {
+        printf("Failed to connect to the system!\n");
+        return err;
+    }
+
+
+    printf("Initialzation successful!\n");
+    volatile int i = 0;
+    running = 1;
+    while (running) {
+        loop(&rt);
+        i++;
+        if (i > 0){
+            running = 0;
+        }
+    }
+    terminate(&rt);
+    free(rt.modules);
+    disconnect();
 }

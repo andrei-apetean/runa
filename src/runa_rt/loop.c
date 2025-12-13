@@ -1,5 +1,5 @@
 
-#include "core.h"
+#include "runa_core/core.h"
 
 uint64_t last = 0;
 uint64_t elapsed = 0;
@@ -9,7 +9,7 @@ void loop(struct rt* rt)
 {
    start = rt->timestamp();
    rt->read_events();
-   rt->sleep(1);
+   rt->idle(1);
    last = rt->timestamp();
    elapsed = last - start;
    float dt = elapsed * 0.001f;

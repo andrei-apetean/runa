@@ -1,31 +1,8 @@
-#include "vulkan.h"
-#include "core.h"
-#include "log.h"
-#include "system.h"
+#include "runa/runa.h"
 
-static int init_instance(struct rvulkan* self);
+#include "module.h"
 
-#if _DEBUG
-static int create_debug_messenger(struct rvulkan* self);
-static void destroy_debug_messenger(struct rvulkan* self);
-#endif /* _DEBUG */
-
-int init_vulkan( struct rvulkan* self) 
-{
-    int err = 0;
-    err = init_instance(self);
-    if (err) {
-        logerr("Failed to initialize vulkan instance!\n");
-        return err;
-    }
-#if _DEBUG
-    err = create_debug_messenger(self);
-    if (err) logwrn("Failed to create vulkan debug messenger!\n");
-#endif /* _DEBUG */
-    return err;
-}
-
-void terminate_vulkan(struct rvulkan* self)
+void terminate_vulkan(struct vulkan* self)
 {
 #if _DEBUG
     destroy_debug_messenger(self);
@@ -33,9 +10,8 @@ void terminate_vulkan(struct rvulkan* self)
 #endif /* _DEBUG */
 }
 
-static int init_instance(struct rvulkan* self)
+int init_instance(struct vulkan* self)
 {
-    (void)self;
     /* TODO */
     const char* surface_extensions[1] = {
         [0] = "VK_KHR_wayland_surface",
@@ -61,12 +37,14 @@ static int init_instance(struct rvulkan* self)
     int layer_count = count_of(layers);
 
 #if _DEBUG
+    
     for (int i = 0; i < extension_count; i++) {
-        loginf("\t%s\n", extensions[i]);
+        self->log("\t%s\n", extensions[i]);
     }
     for (int i = 0; i < layer_count; i++) {
-        loginf("\t%s\n", layers[i]);
+        self->log("\t%s\n", layers[i]);
     }
+   
 #endif /* _DEBUG */
 
     /* TODO: verify extensions/layers available */
@@ -98,25 +76,29 @@ static VkBool32 debug_utils_callback(
     VkDebugUtilsMessageTypeFlagsEXT             types,
     const VkDebugUtilsMessengerCallbackDataEXT* data, void* user_data) {
     (void)types;
+    (void)severity;
+    (void)data;
     (void)user_data;
-    if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
-        logerr(" MessageID: %s %i\nMessage: %s\n\n", data->pMessageIdName,
-              data->messageIdNumber, data->pMessage);
-    }
+    /* if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+    *     logerr(" MessageID: %s %i\nMessage: %s\n\n", data->pMessageIdName,
+    *           data->messageIdNumber, data->pMessage);
+    * }
 
-    if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-        logwrn(" MessageID: %s %i\nMessage: %s\n\n", data->pMessageIdName,
-              data->messageIdNumber, data->pMessage);
-    }
+    * if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+    *     logwrn(" MessageID: %s %i\nMessage: %s\n\n", data->pMessageIdName,
+    *           data->messageIdNumber, data->pMessage);
+    * }
 
-    if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
-        loginf(" MessageID: %s %i\nMessage: %s\n\n", data->pMessageIdName,
-              data->messageIdNumber, data->pMessage);
-    }
+    * if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
+    *     loginf(" MessageID: %s %i\nMessage: %s\n\n", data->pMessageIdName,
+    *           data->messageIdNumber, data->pMessage);
+    * }
+    */
 
     return VK_FALSE;
 }
-static int create_debug_messenger(struct rvulkan* self)
+
+int create_debug_messenger(struct vulkan* self)
 {
     const VkDebugUtilsMessengerCreateInfoEXT info = {
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
@@ -135,14 +117,14 @@ static int create_debug_messenger(struct rvulkan* self)
     return create(self->instance, &info, 0, &self->messenger);
 }
 
-static void destroy_debug_messenger(struct rvulkan* self)
+void destroy_debug_messenger(struct vulkan* self)
 {
     if (!self->messenger) return;
     PFN_vkDestroyDebugUtilsMessengerEXT destroy = (PFN_vkDestroyDebugUtilsMessengerEXT)
         vkGetInstanceProcAddr( self->instance, "vkDestroyDebugUtilsMessengerEXT");
 
     if (!destroy) {
-        logerr("Failed to load debug messanger destruction function!");
+        // logerr("Failed to load debug messanger destruction function!");
         return;
     }
     destroy(self->instance, self->messenger, self->callbacks);

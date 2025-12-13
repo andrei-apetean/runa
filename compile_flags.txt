@@ -1,6 +1,5 @@
 -I./external
--I./include/runa_core
--I./include/runa_vulkan
+-I./include
 -I/home/aa/code/vulkan_sdk/x86_64/include
 -Wall
 -Wextra

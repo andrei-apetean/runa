@@ -2,36 +2,27 @@
 #define CORE_H
 
 #include <stdint.h>
-
-#define container_of(ptr, type, member) \
-    ((type *)((char *)(ptr) - offsetof(type, member)))
-
-#define count_of(arr) (sizeof(arr)/(sizeof(arr[0])))
+#include "runa/runa.h"
 
 struct module {
-    int id;
-};
-
-struct module_info {
-    int size_bytes;
-    char name[64];
+    struct runa_itfd descriptor;
+    struct runa_itf* itf;
+    uintptr_t        handle;
+    uintptr_t        mem;
 };
 
 struct rt {
-    uint64_t (*timestamp)();
-    void     (*sleep)(uint64_t);
-    int      (*log)(const char*, ...);
-    int      (*read_events)();
+    uint64_t       (*timestamp)(void);
+    void           (*idle)(uint64_t);
+    int            (*log)(const char*, ...);
+    int            (*read_events)(void);
+    int            modcount;
+    struct module* modules;
+    struct runa    runa;
 };
 
-struct ini {
-    void* (*dlopen)(const char*);
-    void* (*dlsym)(void*, const char*);
-    void* (*dlclose)(void*, const char*);
-};
-
-int init(struct ini* ini);
-void terminate();
+int  init(struct rt* rt);
+void terminate(struct rt* rt);
 void loop(struct rt* rt);
 
 #endif /* CORE_H */
